@@ -20,6 +20,5 @@ def parse_wits_xml(fn: str) -> pd.Series:
     df["date"] = pd.to_datetime(df["year"], format="%Y")
     return df.set_index("date")["tariff_rate"].sort_index()
 
-# Usage
 steel_ingot_tariffs = parse_wits_xml("tariffs_720610.xml")
 print(steel_ingot_tariffs)
