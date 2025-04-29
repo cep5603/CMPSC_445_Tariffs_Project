@@ -14,15 +14,14 @@ series = {
 }
 
 def main():
-    print("hll")
-    response = requests.get("https://wits.worldbank.org/API/V1/SDMX/V21/rest/data/df_wits_tradestats_tariff/A.usa.wld.fuels.AHS-SMPL-AVRG?startPeriod=2000&endPeriod=2002")
-    response.raise_for_status()
-    print(response.text)
+    #response = requests.get("https://wits.worldbank.org/API/V1/SDMX/V21/rest/data/df_wits_tradestats_tariff/A.usa.wld.fuels.AHS-SMPL-AVRG?startPeriod=2000&endPeriod=2002")
+    #response.raise_for_status()
+    #print(response.text)
 
 
     # 1) Pull price
-    #price_df = fetch_fred_series(series['steel'], FRED_API_KEY)
-    #price_df.set_index('date', inplace=True)
+    price_df = fetch_fred_series(series['ppi-soybeans'], FRED_API_KEY)
+    price_df.set_index('date', inplace=True)
     #print(price_df)
 
 if __name__ == '__main__':

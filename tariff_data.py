@@ -64,7 +64,7 @@ def load_annual_tariffs_hs2_list(hs2_codes: Optional[List[str]] = None, data_glo
 pd.set_option('display.max_rows', None)
 
 df_all = load_annual_tariffs_hs2_list()
-print(df_all)
+#print(df_all)
 
 fig, ax = plot_top_tariff_rates(df_all, top_n=10, by='mean', title='Top 10 HS2 Tariffs by Average Rate')
 fig.savefig('top10_hs2_tariffs.png', dpi=300)
