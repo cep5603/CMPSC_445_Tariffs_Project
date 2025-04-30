@@ -232,7 +232,6 @@ def get_latest_data():
     if not economy or not sector:
         return jsonify({"error": "Economy and Sector parameters are required."}), 400
 
-    # Filter data for the specific group and sort by year descending
     group_df = df_full[
         (df_full['Reporting Economy'] == economy) &
         (df_full['Product/Sector'] == sector)
@@ -241,47 +240,51 @@ def get_latest_data():
     if group_df.empty:
         return jsonify({"error": f"No historical data found for {economy} / {sector}."}), 404
 
-    # Get the latest year (T)
     latest_row = group_df.iloc[0]
     latest_year = latest_row['Year']
     latest_import_value = latest_row['ImportValue']
     latest_duty_rate = latest_row['AverageDutyRate']
 
-    # Initialize values needed for prediction inputs
-    # For predicting T+1 assuming constant tariff from T
-    delta_average_duty_rate_input = 0.0 # Constant tariff assumption
+    delta_average_duty_rate_input = 0.0
     lag1_delta_import_value_input = 0.0
-    lag1_average_duty_rate_input = latest_duty_rate # Rate in year T
+    lag1_average_duty_rate_input = latest_duty_rate # Could be NaN
     lag1_delta_average_duty_rate_input = 0.0
 
-    # Try to get the previous year (T-1) to calculate deltas for year T
     if len(group_df) > 1:
         prev_row = group_df.iloc[1]
-        # Ensure the previous row is indeed the preceding year
         if prev_row['Year'] == latest_year - 1:
-            prev_import_value = prev_row['ImportValue']
-            prev_duty_rate = prev_row['AverageDutyRate']
+            prev_import_value = prev_row['ImportValue'] # Could be NaN
+            prev_duty_rate = prev_row['AverageDutyRate'] # Could be NaN
 
-            # This is the change that occurred *last year* (T-1 to T)
+            # Calculate deltas - these might become NaN if inputs are NaN
             lag1_delta_import_value_input = latest_import_value - prev_import_value
-            # This is the change in duty rate that occurred *last year* (T-1 to T)
             lag1_delta_average_duty_rate_input = latest_duty_rate - prev_duty_rate
         else:
-             print(f"Warning: Gap in years for {economy}/{sector}. Previous row year: {prev_row['Year']}, Latest: {latest_year}. Using 0 for deltas.")
+             print(f"Warning: Gap in years for {economy}/{sector}. Using 0 for deltas.")
     else:
         print(f"Warning: Only one year of data found for {economy}/{sector}. Using 0 for deltas.")
 
-
-    # Prepare the data to send back
-    # Keys should match the 'name' attributes of your input fields in HTML
+    # Prepare the data dictionary
     data_for_inputs = {
         'Delta_AverageDutyRate': delta_average_duty_rate_input,
         'Lag1_Delta_AverageDutyRate': lag1_delta_average_duty_rate_input,
-        'Lag1_Delta_TargetValue': lag1_delta_import_value_input, # Assuming target is absolute change
+        'Lag1_Delta_TargetValue': lag1_delta_import_value_input,
         'Lag1_AverageDutyRate': lag1_average_duty_rate_input
     }
 
-    return jsonify(data_for_inputs)
+    # --- Start: Convert NaN to None for JSON compatibility ---
+    cleaned_data_for_inputs = {}
+    for key, value in data_for_inputs.items():
+        # Use pd.isna() as it handles None, np.nan, pd.NA robustly
+        if pd.isna(value):
+            cleaned_data_for_inputs[key] = None # Convert to Python None -> JSON null
+        else:
+            cleaned_data_for_inputs[key] = value
+    print(f"Cleaned data being sent: {cleaned_data_for_inputs}") # Debug print
+    # --- End: Convert NaN to None ---
+
+    # Return the cleaned dictionary using jsonify
+    return jsonify(cleaned_data_for_inputs)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
