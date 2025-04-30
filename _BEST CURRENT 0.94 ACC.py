@@ -1,12 +1,14 @@
+# train_delta_model.py
+
 import pandas as pd
-import numpy as np
+import numpy as np # Needed for log and inf handling
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import root_mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-from typing import Tuple, Dict, Any, List, Literal, Optional
+from typing import Tuple, Dict, Any, List, Literal # Added Literal
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -14,9 +16,8 @@ from data_utils import filter_economies
 
 def train_import_delta_model(
     csv_path: str,
-    target_transform: Literal['none', 'log_diff', 'pct_change'] = 'none',
-    outlier_percentile_threshold: Optional[float] = None,
-    economies_to_exclude: list = ['World', 'United States of America', 'China'],#['World'],
+    target_transform: Literal['none', 'log_diff', 'pct_change'] = 'none', # New parameter
+    economies_to_exclude: list = ['World', 'United States of America', 'China'],
     test_size: float = 0.2,
     random_state: int = 42,
     use_lags: bool = True,
@@ -27,31 +28,68 @@ def train_import_delta_model(
     rf_max_depth: int = None,
     rf_n_jobs: int = -1
 ) -> Tuple[Pipeline, Dict[str, Any], List[str], pd.DataFrame]:
-    df = pd.read_csv(csv_path)
-    print(f'Loaded data of shape: {df.shape}')
+    """
+    Trains a RandomForestRegressor model to predict the change in
+    (optionally transformed) ImportValue based on the change in
+    AverageDutyRate.
 
-    # Filter economies
+    Parameters
+    ----------
+    csv_path : str
+        Path to the 'merged_imports_duties.csv' file.
+    target_transform : {'none', 'log_diff', 'pct_change'}, optional
+        Transformation to apply to ImportValue before differencing:
+        - 'none': Use absolute change (Delta_ImportValue).
+        - 'log_diff': Use change in log(ImportValue + 1). Approximates pct change for small changes.
+        - 'pct_change': Use percentage change directly.
+        (default: 'none').
+    economies_to_exclude : list, optional
+        List of economy names to exclude.
+    # ... (rest of parameters) ...
+
+    Returns
+    -------
+    # ... (rest of returns) ...
+    """
+    # 1. Load Data
+    try:
+        df = pd.read_csv(csv_path)
+        print(f"Loaded data: {df.shape}")
+    except FileNotFoundError:
+        print(f"Error: File not found at {csv_path}")
+        return None, None, None, None
+
+    required_cols = ['Year', 'Product/Sector', 'Reporting Economy', 'ImportValue', 'AverageDutyRate']
+    if not all(col in df.columns for col in required_cols):
+        print(f"Error: CSV must contain columns: {required_cols}")
+        return None, None, None, None
+
+    # 2. Filter Economies (Optional)
     if economies_to_exclude:
+        # Assumes filter_economies function is available
         df = filter_economies(df, exclude_list=economies_to_exclude)
-        if df.empty: return None, None, None, None
+        if df.empty:
+            print("DataFrame is empty after filtering economies. Stopping.")
+            return None, None, None, None
 
-    # Ensure types and sort
+    # 3. Ensure Types and Sort
     df['Year'] = pd.to_numeric(df['Year'])
     df = df.sort_values(by=['Reporting Economy', 'Product/Sector', 'Year'])
 
-    # Apply target transformation and calculate deltas
+    # 4. Apply Target Transformation and Calculate Deltas
     group_cols = ['Reporting Economy', 'Product/Sector']
-    target = None
-    plot_xlabel = ''
-    # Sets target var name + plot xlabel
+    target = None # Will be set based on transform
+
     if target_transform == 'none':
         print("\nUsing absolute change (Delta_ImportValue) as target.")
         target_value_col = 'ImportValue'
         df['Delta_TargetValue'] = df.groupby(group_cols)[target_value_col].diff()
         target = 'Delta_TargetValue'
         plot_xlabel = 'Change in Import Value (Absolute)'
+
     elif target_transform == 'log_diff':
         print("\nApplying log transform and calculating log-difference as target.")
+        # Handle non-positive values before log: add 1
         non_positive_count = (df['ImportValue'] <= 0).sum()
         if non_positive_count > 0:
             print(f"Warning: Found {non_positive_count} non-positive ImportValue entries. Adding 1 before log transform.")
@@ -60,78 +98,72 @@ def train_import_delta_model(
         df['LogDiff_ImportValue'] = df.groupby(group_cols)[target_value_col].diff()
         target = 'LogDiff_ImportValue'
         plot_xlabel = 'Change in Log(Import Value + 1)'
+
     elif target_transform == 'pct_change':
         print("\nCalculating percentage change as target.")
+        # Calculate pct_change directly
         df['PctChange_ImportValue'] = df.groupby(group_cols)['ImportValue'].pct_change()
+        # Handle potential infinity values from division by zero or near-zero
         inf_count = np.isinf(df['PctChange_ImportValue']).sum()
         if inf_count > 0:
             print(f"Warning: Found {inf_count} infinite values in PctChange_ImportValue. Replacing with NaN.")
             df.replace([np.inf, -np.inf], np.nan, inplace=True)
         target = 'PctChange_ImportValue'
         plot_xlabel = 'Percentage Change in Import Value'
-    else:
-        raise ValueError(f"Unknown target_transform: {target_transform}.")
+        # Note: No separate diff() needed for target here
 
+    else:
+        raise ValueError(f"Unknown target_transform: {target_transform}. Choose 'none', 'log_diff', or 'pct_change'.")
+
+    # Calculate delta for duty rate (always needed)
     df['Delta_AverageDutyRate'] = df.groupby(group_cols)['AverageDutyRate'].diff()
 
-    # Feature engineering (lags)
+    # 5. Feature Engineering (Optional Lags)
     numeric_features = ['Delta_AverageDutyRate']
-    lag1_target_delta_col = None
+    lag1_target_delta_col = None # Store the name of the lagged target delta
     if use_lags:
         df['Lag1_Delta_AverageDutyRate'] = df.groupby(group_cols)['Delta_AverageDutyRate'].shift(1)
+        # Lag the *calculated target delta* (absolute, log-diff, or pct_change)
         lag1_target_delta_col = f'Lag1_{target}'
         df[lag1_target_delta_col] = df.groupby(group_cols)[target].shift(1)
         df['Lag1_AverageDutyRate'] = df.groupby(group_cols)['AverageDutyRate'].shift(1)
-        numeric_features.extend(['Lag1_Delta_AverageDutyRate', lag1_target_delta_col, 'Lag1_AverageDutyRate'])
+        numeric_features.extend([
+            'Lag1_Delta_AverageDutyRate',
+            lag1_target_delta_col, # Use the dynamic lag name
+            'Lag1_AverageDutyRate'
+        ])
         print("Using lagged features.")
 
-    if outlier_percentile_threshold is not None and 0 < outlier_percentile_threshold < 0.5:
-        # Calculate bounds on the target delta column *before* dropping NaNs from lags
-        # but *after* calculating the delta itself. Handle potential NaNs in target here.
-        target_vals_for_bounds = df[target].dropna()
-        if not target_vals_for_bounds.empty:
-            lower_bound = target_vals_for_bounds.quantile(outlier_percentile_threshold)
-            upper_bound = target_vals_for_bounds.quantile(1 - outlier_percentile_threshold)
-            print(f"\nApplying outlier removal based on percentiles: {outlier_percentile_threshold*100:.1f}% / {(1-outlier_percentile_threshold)*100:.1f}%")
-            print(f"Removing '{target}' values outside range [{lower_bound:.4f}, {upper_bound:.4f}]")
-            initial_rows = len(df)
-            # Filter the dataframe
-            df = df[(df[target] >= lower_bound) & (df[target] <= upper_bound) | df[target].isnull()].copy()
-            # Keep rows where target is NaN for now, let the main dropna handle them based on features
-            removed_rows = initial_rows - len(df)
-            print(f"Identified {removed_rows} rows with target delta outside bounds.")
-            print(f"Shape after outlier filtering (before final dropna): {df.shape}")
-            if df.empty:
-                print("Error: DataFrame empty after outlier removal attempt.")
-                return None, None, None, None
-        else:
-            print("Warning: Could not calculate outlier bounds (target column might be all NaN). Skipping outlier removal.")
-    elif outlier_percentile_threshold is not None:
-         print("Warning: outlier_percentile_threshold should be between 0 and 0.5 (exclusive). Skipping outlier removal.")
-    else:
-        print("\nSkipping outlier removal.")
-
-    # Data prep
-    # Drop rows w/ NaNs created by diff/shift/transforms OR where lags are NaN
+    # 6. Prepare Data for Modeling
+    # Drop rows with NaNs created by diff/shift/transformations
     cols_to_check_for_nan = [target] + numeric_features
     df_model = df.dropna(subset=cols_to_check_for_nan).copy()
-    print(f"Shape after final dropna (removes NaNs from lags/diffs): {df_model.shape}")
+    print(f"Shape after dropping NaNs: {df_model.shape}")
 
     if df_model.empty:
-        print("Error: No data remaining after calculating differences/lags and applying dropna.")
+        print("Error: No data remaining after calculating differences/lags/transforms.")
         return None, None, None, None
 
-    # Plot target dist
+    # --- Plot Target Distribution ---
     if plot_target_dist:
         plt.figure(figsize=(10, 6))
+        # Clip extreme outliers for pct_change for better visualization
         data_to_plot = df_model[target]
+        if target_transform == 'pct_change':
+             lower_q = data_to_plot.quantile(0.01)
+             upper_q = data_to_plot.quantile(0.99)
+             data_to_plot = data_to_plot.clip(lower_q, upper_q)
+             print(f"Plotting PctChange clipped between {lower_q:.2f} and {upper_q:.2f}")
+
         sns.histplot(data_to_plot, kde=True, bins=50)
-        plt.title(f'Distribution of {target} (Outliers Removed: {outlier_percentile_threshold is not None})')
+        plt.title(f'Distribution of {target}')
         plt.xlabel(plot_xlabel)
         plt.ylabel('Frequency')
         plt.tight_layout()
         plt.show()
+    # --- End Plotting ---
 
+    # Define features
     categorical_features = ['Reporting Economy', 'Product/Sector']
     if not use_one_hot:
         categorical_features = []
@@ -140,20 +172,22 @@ def train_import_delta_model(
     X = df_model[features]
     y = df_model[target]
 
-    # Preprocessing pipeline
+    # 7. Preprocessing Pipeline
     transformers = []
     if scale_numeric_features and numeric_features:
         transformers.append(('num', StandardScaler(), numeric_features))
-    
+        print("Applying StandardScaler to numeric features.")
     if use_one_hot and categorical_features:
         transformers.append(('cat', OneHotEncoder(handle_unknown='ignore', sparse_output=True), categorical_features))
-    
+        print("Applying OneHotEncoder to categorical features.")
+
     if transformers:
         preprocessor = ColumnTransformer(transformers=transformers, remainder='passthrough')
     else:
+        print("Warning: No scaling or encoding applied.")
         preprocessor = 'passthrough'
 
-    # Model pipeline
+    # 8. Model Pipeline
     pipeline = Pipeline(steps=[
         ('preprocessor', preprocessor),
         ('regressor', RandomForestRegressor(
@@ -165,32 +199,37 @@ def train_import_delta_model(
         ))
     ])
 
-    # Training
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
+    # 9. Train/Test Split
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=random_state
+    )
     print(f"Train shape: {X_train.shape}, Test shape: {X_test.shape}")
 
+    # 10. Train Model
     print(f"Training RandomForest model on target: {target}...")
     pipeline.fit(X_train, y_train)
     print("Training complete.")
     try:
         oob = pipeline.named_steps['regressor'].oob_score_
         print(f"Model OOB Score: {oob:.4f}")
-    except AttributeError: print("OOB score not available.")
+    except AttributeError:
+        print("OOB score not available.")
 
-    # Get feature names out
+    # Get feature names
     try:
         feature_names_out = pipeline.named_steps['preprocessor'].get_feature_names_out()
     except Exception as e:
         print(f"Could not get transformed feature names automatically: {e}. Using original.")
         feature_names_out = features
 
-
-    # Evaluate
+    # 11. Evaluate
+    print("Evaluating model...")
     y_pred = pipeline.predict(X_test)
     rmse = root_mean_squared_error(y_test, y_pred)
     r2 = r2_score(y_test, y_pred)
     metrics = {'RMSE': rmse, 'R2_Score': r2}
-    print(f'\nEvaluation Metrics: {metrics}')
+    print(f"Evaluation Metrics: {metrics}")
+    # Add note about RMSE scale
     if target_transform == 'log_diff':
         print(f"(Note: RMSE is on the scale of change in log(value+1))")
     elif target_transform == 'pct_change':
@@ -198,47 +237,35 @@ def train_import_delta_model(
     else:
         print(f"(Note: RMSE is on the scale of absolute change in millions USD)")
 
+
     return pipeline, metrics, list(feature_names_out), df_model
 
+
+# --- Example Usage ---
 if __name__ == '__main__':
     FILE_PATH = 'merged_imports_duties.csv'
 
-    # Absolute change (no outlier removal)
-    print("\n--- Training: Absolute Change Target (NO Outlier Removal) ---")
-    pipeline_abs, metrics_abs, _, _ = train_import_delta_model(
-        FILE_PATH,
-        target_transform='none',
-        outlier_percentile_threshold=None,
-        plot_target_dist=False
+    # --- Option 1: Absolute Change (Original Best) ---
+    print("\n--- Training: Absolute Change Target ---")
+    pipeline_abs, metrics_abs, features_abs, debug_abs = train_import_delta_model(
+        FILE_PATH, target_transform='none', plot_target_dist=False # Already seen plot
     )
-    
-    print(f"Result: R2={metrics_abs['R2_Score']:.4f}, RMSE={metrics_abs['RMSE']:.2f}")
 
-    # Absolute change (outlier removal)
-    print("\n--- Training: Absolute Change Target (WITH 1% Outlier Removal) ---")
-    pipeline_abs_or, metrics_abs_or, features_abs_or, debug_abs_or = train_import_delta_model(
-        FILE_PATH,
-        target_transform='none',
-        outlier_percentile_threshold=0.001,
-        plot_target_dist=False
+    # --- Option 2: Log-Difference Target ---
+    print("\n--- Training: Log-Difference Target ---")
+    pipeline_log, metrics_log, features_log, debug_log = train_import_delta_model(
+        FILE_PATH, target_transform='log_diff', plot_target_dist=True
     )
-    
-    print(f"Result: R2={metrics_abs_or['R2_Score']:.4f}, RMSE={metrics_abs_or['RMSE']:.2f}")
 
-    # Feature importance for outlier removed model
-    if pipeline_abs_or:
-        try:
-            importances = pipeline_abs_or.named_steps['regressor'].feature_importances_
-            importance_series = pd.Series(importances, index=features_abs_or)
-            top_n = 20
-            print(f"\nTop {top_n} Feature Importances (Outlier Removed Model):")
-            print(importance_series.sort_values(ascending=False).head(top_n))
+    # --- Option 3: Percentage Change Target ---
+    print("\n--- Training: Percentage Change Target ---")
+    pipeline_pct, metrics_pct, features_pct, debug_pct = train_import_delta_model(
+        FILE_PATH, target_transform='pct_change', plot_target_dist=True
+    )
 
-            # Plot
-            plt.figure(figsize=(10, max(5, top_n * 0.3)))
-            importance_series.sort_values(ascending=False).head(top_n).plot(kind='barh')
-            plt.title(f'Top {top_n} Feature Importances (Percentage Change Model)')
-            plt.xlabel('Importance')
-            plt.gca().invert_yaxis(); plt.tight_layout(); plt.show()
-        except Exception as e:
-            print(f"\nCould not retrieve feature importances: {e}")
+    # Compare results if desired
+    print("\n--- Comparison ---")
+    if metrics_abs: print(f"Absolute Change: R2={metrics_abs['R2_Score']:.4f}, RMSE={metrics_abs['RMSE']:.4f}")
+    if metrics_log: print(f"Log-Difference:  R2={metrics_log['R2_Score']:.4f}, RMSE={metrics_log['RMSE']:.4f}")
+    if metrics_pct: print(f"Percent Change:  R2={metrics_pct['R2_Score']:.4f}, RMSE={metrics_pct['RMSE']:.4f}")
+

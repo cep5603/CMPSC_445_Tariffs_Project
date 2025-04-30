@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 import requests
-from data_fetch import fetch_fred_series
+from fred_fetch import fetch_fred_series
 
 FRED_API_KEY = os.getenv('FRED_API_KEY')
 print(FRED_API_KEY)

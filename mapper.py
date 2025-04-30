@@ -41,13 +41,11 @@ duty_to_import_map = {
     # 'Total merchandise' from Imports is an aggregate, likely not useful for mapping *from* duties.
 }
 
-# --- How to use it ---
 import pandas as pd
 
 df_imports = pd.read_csv('Merchandise imports by product group.csv', encoding='latin-1')
 df_duties = pd.read_csv('Simple average duty by product group.csv', encoding='latin-1')
 
-# --- Rename 'Value' columns in original DataFrames ---
 # Rename in Imports DataFrame
 if 'Value' in df_imports.columns:
     df_imports = df_imports.rename(columns={'Value': 'ImportValue'})
@@ -59,19 +57,17 @@ else:
 if 'Value' in df_duties.columns:
     df_duties = df_duties.rename(columns={'Value': 'AverageDutyRate'})
     print("Renamed 'Value' to 'AverageDutyRate' in df_duties.")
-    original_duty_value_col = 'AverageDutyRate' # Store the new name
+    original_duty_value_col = 'AverageDutyRate'
 else:
     print("Warning: 'Value' column not found in df_duties.")
 
-# --- Standardize Duty Categories ---
+# Standardize duty categories
 df_duties['Standardized_Sector'] = df_duties['Product/Sector'].map(duty_to_import_map)
 
-# --- Aggregate Duty Rates by Standardized Sector and Year ---
-# Keep only necessary columns and drop rows where standardization failed
-# Use the RENAMED duty column name here
+# Aggregate duty rates
 df_duties_clean = df_duties[['Year', 'Standardized_Sector', original_duty_value_col]].dropna()
 
-print("\nChecking for duplicates in duties BEFORE aggregation:")
+print('\nChecking for duplicates in duties BEFORE aggregation:')
 print(df_duties_clean.duplicated(subset=['Year', 'Standardized_Sector']).sum())
 
 # Group by the keys we will merge on and calculate the mean duty rate
@@ -85,35 +81,24 @@ print("\nShape of aggregated duties:", df_duties_agg.shape)
 print("Checking for duplicates in duties AFTER aggregation:")
 print(df_duties_agg.duplicated(subset=['Year', 'Standardized_Sector']).sum()) # Should be 0
 
-# --- Check Imports Granularity and Duplicates ---
+# Check imports granularity/dupes
 print("\nShape of imports:", df_imports.shape)
 print("Import columns:", df_imports.columns)
 print("Checking for duplicates in imports on merge keys:")
 print(df_imports.duplicated(subset=['Year', 'Product/Sector']).sum())
 
 
-# --- Perform the Merge using AGGREGATED Duties ---
+# Perform merge using AGGREGATED duties
 print("\nMerging...")
-df_merged = pd.merge(
-    df_imports, # Now has 'ImportValue'
-    df_duties_agg, # Now has 'AverageDutyRate'
-    left_on=['Year', 'Product/Sector'],
-    right_on=['Year', 'Standardized_Sector'],
-    how='left'
-)
-
-# Optionally drop the extra sector column
-# df_merged = df_merged.drop(columns=['Standardized_Sector'])
+df_merged = pd.merge(df_imports, df_duties_agg, left_on=['Year', 'Product/Sector'], right_on=['Year', 'Standardized_Sector'], how='left')
 
 print("\nFinal merged shape:", df_merged.shape)
-print("Columns in merged DataFrame:", df_merged.columns.tolist()) # Verify column names
+print("Columns in merged DataFrame:", df_merged.columns.tolist())
 
-# --- Select Only Necessary Columns (Example) ---
-necessary_cols = ['Year', 'Product/Sector', 'Reporting Economy', 'ImportValue', 'AverageDutyRate'] # Adjust as needed
+necessary_cols = ['Year', 'Product/Sector', 'Reporting Economy', 'ImportValue', 'AverageDutyRate']
 df_merged_small = df_merged[necessary_cols]
 print("Shape after selecting columns:", df_merged_small.shape)
 
-# --- Save (Optional) ---
-print("\nSaving smaller CSV...")
-df_merged_small.to_csv('merged_imports_duties.csv', index=False)
-print("Done.")
+SAVE_NAME = 'merged_imports_duties.csv'
+df_merged_small.to_csv(SAVE_NAME, index=False)
+print(f'Saved to {SAVE_NAME}')
