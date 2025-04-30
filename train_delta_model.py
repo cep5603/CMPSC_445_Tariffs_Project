@@ -37,19 +37,20 @@ def train_import_delta_model(
 
     if start_year is not None:
         initial_rows_year = len(df)
-        print(f"\nFiltering data to include years >= {start_year}...")
+        #print(f"\nFiltering data to include years >= {start_year}...")
         df = df[df['Year'] >= start_year].copy() # Use .copy()
         removed_rows_year = initial_rows_year - len(df)
-        print(f"Removed {removed_rows_year} rows from years before {start_year}.")
-        print(f"Shape after year filter: {df.shape}")
+        #print(f"Removed {removed_rows_year} rows from years before {start_year}.")
+        #print(f"Shape after year filter: {df.shape}")
         if df.empty:
-            print(f"Error: No data remaining after filtering for year >= {start_year}.")
+            #print(f"Error: No data remaining after filtering for year >= {start_year}.")
             return None, None, None, None
 
     # Filter economies
     if economies_to_exclude:
         df = filter_economies(df, exclude_list=economies_to_exclude)
-        if df.empty: return None, None, None, None
+        if df.empty:
+            return None, None, None, None
 
     # Ensure types and sort
     df['Year'] = pd.to_numeric(df['Year'])
@@ -61,7 +62,7 @@ def train_import_delta_model(
     df_original_for_verify = df.copy() if do_interpolation_check and initial_nans > 0 else None
 
     if initial_nans > 0:
-        print(f"\nFound {initial_nans} missing values in '{duty_col}'. Applying group-wise linear interpolation...")
+        #print(f"\nFound {initial_nans} missing values in '{duty_col}'. Applying group-wise linear interpolation...")
         # Apply interpolation within each group
         df[duty_col] = df.groupby(['Reporting Economy', 'Product/Sector'])[duty_col].transform(lambda x: x.interpolate(method='linear', limit_direction='both', limit_area=None))
         # limit_direction='both' fills forward then backward
@@ -69,7 +70,7 @@ def train_import_delta_model(
 
         remaining_nans = df[duty_col].isnull().sum()
         filled_nans = initial_nans - remaining_nans
-        print(f"Interpolated {filled_nans} values. {remaining_nans} NaNs remain (likely groups with insufficient data).")
+        #print(f"Interpolated {filled_nans} values. {remaining_nans} NaNs remain (likely groups with insufficient data).")
         # Optionally, fill any remaining NaNs (e.g., groups with only 1 point or all NaNs) with 0 or a global mean/median if desired
         # df[duty_col] = df[duty_col].fillna(0) # Example: Fill remaining with 0
     else:
@@ -198,6 +199,7 @@ def train_import_delta_model(
         ('regressor', RandomForestRegressor(
             n_estimators=rf_n_estimators,
             max_depth=rf_max_depth,
+            #min_samples_leaf=2,
             #min_samples_split=20,
             random_state=random_state,
             n_jobs=rf_n_jobs,
