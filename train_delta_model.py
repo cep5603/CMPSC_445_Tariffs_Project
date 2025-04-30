@@ -26,7 +26,7 @@ def train_import_delta_model(
     rf_n_estimators: int = 100,
     rf_max_depth: int = None,
     rf_n_jobs: int = -1
-) -> Tuple[Pipeline, Dict[str, Any], List[str], pd.DataFrame]:
+) -> Tuple[Pipeline, Dict[str, Dict[str, float]], List[str], pd.DataFrame]:
     df = pd.read_csv(csv_path)
     print(f'Loaded data of shape: {df.shape}')
 
@@ -184,13 +184,23 @@ def train_import_delta_model(
         print(f"Could not get transformed feature names automatically: {e}. Using original.")
         feature_names_out = features
 
+    # Training predict
+    metrics = {'train': {}, 'test': {}}
+    y_pred_train = pipeline.predict(X_train)
+    rmse_train = root_mean_squared_error(y_train, y_pred_train)
+    r2_train = r2_score(y_train, y_pred_train)
+    metrics['train']['RMSE'] = rmse_train
+    metrics['train']['R2_Score'] = r2_train
+    print(f"  Train Metrics: RMSE={rmse_train:.4f}, R2={r2_train:.4f}")
 
-    # Evaluate
-    y_pred = pipeline.predict(X_test)
-    rmse = root_mean_squared_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
-    metrics = {'RMSE': rmse, 'R2_Score': r2}
-    print(f'\nEvaluation Metrics: {metrics}')
+    # Test predict
+    y_pred_test = pipeline.predict(X_test)
+    rmse_test = root_mean_squared_error(y_test, y_pred_test)
+    r2_test = r2_score(y_test, y_pred_test)
+    metrics['test']['RMSE'] = rmse_test
+    metrics['test']['R2_Score'] = r2_test
+    print(f"  Test Metrics:  RMSE={rmse_test:.4f}, R2={r2_test:.4f}")
+
     if target_transform == 'log_diff':
         print(f"(Note: RMSE is on the scale of change in log(value+1))")
     elif target_transform == 'pct_change':
@@ -212,7 +222,9 @@ if __name__ == '__main__':
         plot_target_dist=False
     )
     
-    print(f"Result: R2={metrics_abs['R2_Score']:.4f}, RMSE={metrics_abs['RMSE']:.2f}")
+    print(f"Result (No Outlier Removal):")
+    print(f"  Train: R2={metrics_abs['train']['R2_Score']:.4f}, RMSE={metrics_abs['train']['RMSE']:.2f}")
+    print(f"  Test:  R2={metrics_abs['test']['R2_Score']:.4f}, RMSE={metrics_abs['test']['RMSE']:.2f}")
 
     # Absolute change (outlier removal)
     print("\n--- Training: Absolute Change Target (WITH 1% Outlier Removal) ---")
@@ -223,7 +235,9 @@ if __name__ == '__main__':
         plot_target_dist=False
     )
     
-    print(f"Result: R2={metrics_abs_or['R2_Score']:.4f}, RMSE={metrics_abs_or['RMSE']:.2f}")
+    print(f"Result (WITH 0.1% Outlier Removal):")
+    print(f"  Train: R2={metrics_abs_or['train']['R2_Score']:.4f}, RMSE={metrics_abs_or['train']['RMSE']:.2f}")
+    print(f"  Test:  R2={metrics_abs_or['test']['R2_Score']:.4f}, RMSE={metrics_abs_or['test']['RMSE']:.2f}")
 
     # Feature importance for outlier removed model
     if pipeline_abs_or:
