@@ -1,7 +1,0 @@
-To request one reporter-one partner-one product-all available years-reported tariff rate:
-
-Steel/iron nonalloy ingots US tariffs all partners:
-https://wits.worldbank.org/API/V1/SDMX/V21/datasource/TRN/reporter/840/partner/000/product/720610/year/all/datatype/reported/indicator/MFN_VALUE_MEAN
-
-
-https://wits.worldbank.org/API/V1/SDMX/V21/datasource/TRN/reporter/840/partner/000/product/020110/year/all/datatype/reported

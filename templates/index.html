@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tariff Impact Predictor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src='https://cdn.plot.ly/plotly-latest.min.js'></script>
+    <!-- <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"> -->
+    <style>
+        .container { max-width: 960px; }
+        .form-label { font-weight: bold; }
+        .prediction-result { margin-top: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .error-message { color: red; font-weight: bold; }
+        #plotDiv {
+            margin-top: 30px;
+            min-height: 500px;
+            border: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Tariff Impact Predictor</h1>
+        <p>Predict the year-over-year change in import value based on tariff changes and other factors</p>
+
+        <form action="{{ url_for('predict') }}" method="post" class="row g-3">
+
+            <div class="col-md-6">
+                <label for="reporting_economy" class="form-label">Reporting Economy</label>
+                <select class="form-select" id="reporting_economy" name="reporting_economy" required>
+                    <option value="" disabled {{ 'selected' if not selected_economy }}>Select Economy...</option>
+                    {% for economy in reporting_economies %}
+                        <option value="{{ economy }}" {{ 'selected' if economy == selected_economy }}>{{ economy }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label for="product_sector" class="form-label">Product/Sector</label>
+                <select class="form-select" id="product_sector" name="product_sector" required>
+                     <option value="" disabled {{ 'selected' if not selected_sector }}>Select Sector...</option>
+                    {% for sector in product_sectors %}
+                        <option value="{{ sector }}" {{ 'selected' if sector == selected_sector }}>{{ sector }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {% for feature in numeric_features %}
+            <div class="col-md-6">
+                {# Use the feature_labels dictionary for the label text #}
+                {# Fall back to default formatting if label not found #}
+                <label for="{{ feature }}" class="form-label">{{ feature_labels.get(feature, feature.replace('_', ' ').title()) }}</label>
+                <input type="number" step="any" class="form-control" id="{{ feature }}" name="{{ feature }}"
+                       value="{{ form_values.get(feature, 0.0) }}" required>
+            </div>
+            {% endfor %}
+
+
+            <div class="col-12 mb-3"> {# Added mb-3 for spacing #}
+                <button type="submit" class="btn btn-primary">Predict Change</button>
+                <button type="button" id="fillNextYearBtn" class="btn btn-secondary ms-2">
+                    Fill for Next Year (No Tariff Change)
+                </button>
+            </div>
+        </form>
+
+        {% if prediction_result %}
+        <div class="prediction-result {% if error %}bg-danger-subtle{% else %}bg-success-subtle{% endif %}">
+            <h4>Prediction Result:</h4>
+            <p>{{ prediction_result }}</p>
+            {% if error %}
+                <p class="error-message">Error: {{ error }}</p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <hr>
+        <h2>Historical View</h2>
+        <p>Select an economy and sector above to view historical data.</p>
+        <div id="plotDiv">
+            <!-- Draws plotly here -->
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const economySelect = document.getElementById('reporting_economy');
+        const sectorSelect = document.getElementById('product_sector');
+        const plotDiv = document.getElementById('plotDiv');
+
+        // Button/input field refs
+        const fillButton = document.getElementById('fillNextYearBtn');
+        const deltaDutyInput = document.getElementById('Delta_AverageDutyRate');
+        const lag1DeltaDutyInput = document.getElementById('Lag1_Delta_AverageDutyRate');
+        const lag1DeltaTargetInput = document.getElementById('Lag1_Delta_TargetValue');
+        const lag1DutyInput = document.getElementById('Lag1_AverageDutyRate');
+
+        function fetchAndPlot() {
+            const selectedEconomy = economySelect.value;
+            const selectedSector = sectorSelect.value;
+
+            if (selectedEconomy && selectedSector) {
+                // Construct URL for the plot data endpoint
+                const plotUrl = `/plot_history?economy=${encodeURIComponent(selectedEconomy)}&sector=${encodeURIComponent(selectedSector)}`;
+
+                fetch(plotUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(graphJson => {
+                        if (graphJson.error) {
+                             plotDiv.innerHTML = `<p class="text-danger">Error loading plot: ${graphJson.error}</p>`;
+                        } else {
+                            // Use Plotly.react for efficient updates if plot exists
+                            Plotly.react(plotDiv, graphJson.data, graphJson.layout);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching plot data:', error);
+                        plotDiv.innerHTML = `<p class="text-danger">Could not load plot data.<br><br><strong>The combination of Reporter and Product likely has no data.</strong><br><br>${error}</p>`;
+                    });
+            } else {
+                 plotDiv.innerHTML = '<p>Please select both an economy and a sector to view the plot.</p>';
+            }
+        }
+
+        fillButton.addEventListener('click', () => {
+            const selectedEconomy = economySelect.value;
+            const selectedSector = sectorSelect.value;
+
+            if (!selectedEconomy || !selectedSector) {
+                alert("Please select both an Economy and a Sector first.");
+                return;
+            }
+
+            // Optional: Provide visual feedback
+            fillButton.textContent = 'Fetching...';
+            fillButton.disabled = true;
+
+            const dataUrl = `/get_latest_data?economy=${encodeURIComponent(selectedEconomy)}&sector=${encodeURIComponent(selectedSector)}`;
+            console.log("Fetching latest data from:", dataUrl);
+
+            fetch(dataUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        // Try to get error message from JSON response if possible
+                        return response.json().then(err => { throw new Error(err.error || `HTTP error ${response.status}`) });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("Received data for inputs:", data);
+                    if (data.error) {
+                        throw new Error(data.error); // Handle errors sent from backend
+                    }
+                    // Populate the fields - use data keys matching backend JSON
+                    deltaDutyInput.value = data.Delta_AverageDutyRate ?? 0.0; // Use ?? for nullish coalescing
+                    lag1DeltaDutyInput.value = data.Lag1_Delta_AverageDutyRate ?? 0.0;
+                    lag1DeltaTargetInput.value = data.Lag1_Delta_TargetValue ?? 0.0;
+                    lag1DutyInput.value = data.Lag1_AverageDutyRate ?? 0.0;
+
+                    fillButton.textContent = 'Fill for Next Year (Constant Tariffs)'; // Reset button text
+                    fillButton.disabled = false;
+
+                })
+                .catch(error => {
+                    console.error('Error fetching latest data:', error);
+                    alert(`Error fetching data: ${error.message}`);
+                    fillButton.textContent = 'Fill for Next Year (Constant Tariffs)'; // Reset button text
+                    fillButton.disabled = false;
+                });
+        });
+
+        // Add event listeners to update plot when selections change
+        economySelect.addEventListener('change', fetchAndPlot);
+        sectorSelect.addEventListener('change', fetchAndPlot);
+
+        // Initial plot load if values are pre-selected (e.g., after prediction)
+        document.addEventListener('DOMContentLoaded', (event) => {
+             if (economySelect.value && sectorSelect.value) {
+                 fetchAndPlot();
+             } else {
+                 plotDiv.innerHTML = '<p>Please select both an economy and a sector to view the plot.</p>';
+             }
+        });
+    </script>
+</body>
+</html>
