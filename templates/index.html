@@ -104,6 +104,9 @@
                 // Construct URL for the plot data endpoint
                 const plotUrl = `/plot_history?economy=${encodeURIComponent(selectedEconomy)}&sector=${encodeURIComponent(selectedSector)}`;
 
+                // Clear plot text
+                plotDiv.innerHTML = ``;
+
                 fetch(plotUrl)
                     .then(response => {
                         if (!response.ok) {
