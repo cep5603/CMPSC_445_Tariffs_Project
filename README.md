@@ -95,6 +95,28 @@ Data was collected from `https://stats.wto.org/` after creating a WTO account. A
  
 Each row also includes many metadata not directly used by this project, such as the partner economy (only reporter economies were considered).
 
+The final dataframe used for model training is structured like this:
+(The row order in this sample has been randomized to show data diversity.)
+
+| Year | Product/Sector                                   | Reporting Economy         | ImportValue   | AverageDutyRate |
+| :--- | :----------------------------------------------- | :------------------------ | :------------ | :-------------- |
+| 2017 | Fuels and mining products                        | Bosnia and Herzegovina    | 1909.826295   |                 |
+| 2011 | Textiles                                         | Zimbabwe                  | 87.926265     | 10.36           |
+| 2019 | Manufactures                                     | Hungary                   | 96326.13703   |                 |
+| 2022 | Pharmaceuticals                                  | Portugal                  | 3967.788733   |                 |
+| 2019 | Food                                             | Seychelles                | 273.456756    | 11.56111        |
+| 2008 | Agricultural products                            | Saudi Arabia, Kingdom of  | 12801.95974   | 4.435484        |
+| 2008 | Office and telecom equipment                     | Syrian Arab Republic      | 194.241765    |                 |
+| 1988 | Office and telecom equipment                     | Sri Lanka                 | 73.387728     |                 |
+| 2023 | Chemicals                                        | Chinese Taipei            | 33103.372     | 2.768941        |
+| 2009 | Manufactures                                     | Honduras                  | 4814.202615   | 6.505           |
+| 2011 | Electronic data processing and office equipment | Saint Lucia               | 12.083896     | 10.21           |
+| 1994 | Agricultural products                            | France                    | 30824.63894   |                 |
+| 2006 | Food                                             | European Union            | 219987.832    | 21.35452        |
+| 2021 | Clothing                                         | Greenland                 | 27.48         |                 |
+| 2008 | Manufactures                                     | Solomon Islands           | 151.917941    | 9.871749        |
+
+
 ### Data Processing
 
 A number of preprocessing steps were taken to prepare the data for training. Firstly, it was necessary to combine the two datasets into one, with all the relevant features. There was an immediate challenge with this: the proucts sectors are not standardized across the two. The tariff data uses the WTO's own standardized 22-product categorization scheme, while the import data uses a different, SITC3 product classification, which had 18 unique values in this case. To address this, a mapping module was created (`mapper.py`) that attempts to merge the two product/sector schemes with as little loss in information and intelligibility as possible.
