@@ -20,7 +20,7 @@ Install the requirements:
 
 `pip install -r requirements.txt`
 
-(If node done so already, also install NodeJS.)
+(If not done so already, also install NodeJS.)
 
 In a console window, run:
 
