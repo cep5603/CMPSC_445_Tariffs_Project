@@ -135,12 +135,13 @@ The final dataframe used for model training is structured as below.
 | 1988 | Office and telecom equipment                     | Sri Lanka                 | 73.387728     |                 |
 | 2023 | Chemicals                                        | Chinese Taipei            | 33103.372     | 2.768941        |
 | 2009 | Manufactures                                     | Honduras                  | 4814.202615   | 6.505           |
-| 2011 | Electronic data processing and office equipment | Saint Lucia               | 12.083896     | 10.21           |
+| 2011 | Electronic data processing and office equipment  | Saint Lucia               | 12.083896     | 10.21           |
 | 1994 | Agricultural products                            | France                    | 30824.63894   |                 |
 | 2006 | Food                                             | European Union            | 219987.832    | 21.35452        |
 | 2021 | Clothing                                         | Greenland                 | 27.48         |                 |
 | 2008 | Manufactures                                     | Solomon Islands           | 151.917941    | 9.871749        |
 
+---
 
 ### Data Processing
 
@@ -154,9 +155,13 @@ One other step was data imputation: many tariff values (average duty rates) were
 
 Outlier removal and normalization of import values according to the reporter were also attempted as preprocessing steps, but they did not improve performance (at least, as implemented).
 
+---
+
 ### Model Development
 
 Initially, linear regression was used, but this performed very poorly, so random forest was tested next instead. This was able to perform much better, initially achieving about 94% accuracy but a poor RMSE of about 25,000. Through data preprocessing, the accuracy was reduced but the RMSE improved, creating a more even model.
+
+---
 
 ### Discussion and Conclusion
 
