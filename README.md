@@ -167,6 +167,6 @@ The random forest model was tested with and without lagged features. Without lag
 
 ### Discussion and Conclusion
 
-In both preliminary and final models, the R^2 is quite high, but RMSE is poor. This indicates that the model is good at predicting the vast majority of year-to-year import value deltas, but struggles with outliers.
+In both preliminary and final models, the R² is quite high, but RMSE is poor. This indicates that the model is good at predicting the vast majority of year-to-year import value deltas, but struggles with outliers.
 
 There was overall a tradeoff between maximizing R² and minimizing RMSE. It was very easy to get a good score on only one of these, but extremely difficult to do so for both. For instance, during development, one model was developed with an R² of 94%, but an RMSE of over 22,000. This suggested that the model was excellent at predicting the vast majority of cases where the year-to-year change in import values was small, but made very large errors when predicting the magnitude (but not direction) of multi-billion dollar swings.
