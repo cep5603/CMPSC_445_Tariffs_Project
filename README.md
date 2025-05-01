@@ -159,10 +159,14 @@ Outlier removal and normalization of import values according to the reporter wer
 
 ### Model Development
 
-Initially, linear regression was used, but this performed very poorly, so random forest was tested next instead. This was able to perform much better, initially achieving about 94% accuracy but a poor RMSE of about 25,000. Through data preprocessing, the accuracy was reduced but the RMSE improved, creating a more even model.
+Initially, linear regression was used, but this performed very poorly, so random forest was tested next instead. This was able to perform much better, initially achieving about 94% accuracy but a poor RMSE of about 25,000. Through data preprocessing, the accuracy was reduced but the RMSE improved, creating a more well-rounded model.
+
+The random forest model was tested with and without lagged features. Without lagged features (especially `Lag1_Delta_TargetValue`), the model struggles significantly more to predict even the non-extreme changes accurately. The lagged features were determined to be important for achieving both high R² and low RMSE on the outlier-removed data.
 
 ---
 
 ### Discussion and Conclusion
 
 In both preliminary and final models, the R^2 is quite high, but RMSE is poor. This indicates that the model is good at predicting the vast majority of year-to-year import value deltas, but struggles with outliers.
+
+There was overall a tradeoff between maximizing R² and minimizing RMSE. It was very easy to get a good score on only one of these, but extremely difficult to do so for both. For instance, during development, one model was developed with an R² of 94%, but an RMSE of over 22,000. This suggested that the model was excellent at predicting the vast majority of cases where the year-to-year change in import values was small, but made very large errors when predicting the magnitude (but not direction) of multi-billion dollar swings.
