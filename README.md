@@ -1,12 +1,18 @@
 # CMPSC_445_Tariffs_Project
 
+---
+
 ### Project Description
 
 This project is a web application built to predict how much import values might change year-over-year for different countries and product types, specifically looking at the impact of tariffs. We fed historical trade data and average duty rates into a Random Forest model; this type of model is good at finding complex patterns. To make the predictions relevant, the model doesn't just look at current tariff levels, but focuses on changes – how much did the duty rate change this year? What was the change in import value last year (since past trends matter)? It also considers the duty rate level and change from the previous year. Of course, the specific country and product sector are key inputs too. Before training, we had to clean the data; this involved filling in missing tariff data using interpolation (guessing based on nearby years within the same group) and removing a few extreme outlier data points representing massive, unusual swings in import value to keep the model focused on more typical patterns. The final web app, built with Flask, lets users pick a country and sector, see the historical trends, plug in values for the key factors (or use a button to auto-fill for a "what if tariffs stay the same?" scenario), and get a prediction for the change in import value, shown in millions of USD.
 
+---
+
 ### Project Significance
 
 Quantitatively predicting the impact of import duties is notoriously difficult. This project's significance, then, comes from offering a practical tool that goes beyond just theory; it gives users a concrete prediction of how import values might react to tariff changes and recent history. Such an application, if further developed, could help businesses and policymakers anticipate the fallout from trade policy shifts, allowing for better planning. It's also meaningful because it demonstrates how techniques learned in class, like Random Forest regression, handling time-series features (like year-over-year changes and lags), dealing with outliers, and imputing missing data, can be applied to messy, real-world economic data.
+
+---
 
 ### Instructions for Web Usage
 
@@ -23,6 +29,8 @@ In a console window, run:
 to start the webserver.
 
 Then, ctrl+click on the provided localhost link (default: `http://127.0.0.1:5001`) to open the interface.
+
+---
 
 ### Code Structure
 
@@ -82,21 +90,38 @@ Key Directories:
 
 ### Functionalities and Test Results
 
+The web application contains the following functionalities the user may interact with:
+
+- Selection of reporting economy
+- Selection of product sector
+- Future tariff prediction
+  - Four fields the user may additionally edit to predict the import values of future years:
+     - Change in Average Duty Rate This Year (%)
+     - Change in Average Duty Rate Last Year (%)
+     - Average Duty Rate Last Year (%)
+     - Change in Import Value Last Year (Millions USD)
+     - *The user may also select an option to autofill the latter three with the values of the currently selected economy-product sector combination.*
+ - Historical View
+   - A line chart, made with Plotly, displaying the year-to-year import value and average duty rate of the selected economy-product sector combination
+
+---
+
 ### Data Collection
 
 Data was collected from `https://stats.wto.org/` after creating a WTO account. All reporting economies and the years 1988–2024 were selected. The following two indicators were attained:
 
 - Merchandise imports by product group – annual (Million US dollar)
- - *This is used as a target variable*
- - Data quantity: 102136 data rows
+  - *This is used as a target variable*
+  - Data quantity: 102136 data rows
 - MFN - Simple average duty by product groups (Percent)
   - *This is used as an explanatory variable*
   - Data quantity: 49523 data rows
  
 Each row also includes many metadata not directly used by this project, such as the partner economy (only reporter economies were considered).
 
-The final dataframe used for model training is structured like this:
-(The row order in this sample has been randomized to show data diversity.)
+The final dataframe used for model training is structured as below.
+
+(The row order in this sample is randomized to show data diversity.)
 
 | Year | Product/Sector                                   | Reporting Economy         | ImportValue   | AverageDutyRate |
 | :--- | :----------------------------------------------- | :------------------------ | :------------ | :-------------- |
