@@ -79,7 +79,6 @@
         <h2>Historical View</h2>
         <p>Select an economy and sector above to view historical data.</p>
         <div id="plotDiv">
-            <!-- Draws plotly here -->
         </div>
 
     </div>
@@ -116,7 +115,6 @@
                         if (graphJson.error) {
                              plotDiv.innerHTML = `<p class="text-danger">Error loading plot: ${graphJson.error}</p>`;
                         } else {
-                            // Use Plotly.react for efficient updates if plot exists
                             Plotly.react(plotDiv, graphJson.data, graphJson.layout);
                         }
                     })
@@ -138,7 +136,6 @@
                 return;
             }
 
-            // Optional: Provide visual feedback
             fillButton.textContent = 'Fetching...';
             fillButton.disabled = true;
 
@@ -156,27 +153,26 @@
                 .then(data => {
                     console.log("Received data for inputs:", data);
                     if (data.error) {
-                        throw new Error(data.error); // Handle errors sent from backend
+                        throw new Error(data.error);
                     }
-                    // Populate the fields - use data keys matching backend JSON
-                    deltaDutyInput.value = data.Delta_AverageDutyRate ?? 0.0; // Use ?? for nullish coalescing
+                    // Populate the fields; use data keys matching backend JSON
+                    deltaDutyInput.value = data.Delta_AverageDutyRate ?? 0.0;
                     lag1DeltaDutyInput.value = data.Lag1_Delta_AverageDutyRate ?? 0.0;
                     lag1DeltaTargetInput.value = data.Lag1_Delta_TargetValue ?? 0.0;
                     lag1DutyInput.value = data.Lag1_AverageDutyRate ?? 0.0;
 
-                    fillButton.textContent = 'Fill for Next Year (Constant Tariffs)'; // Reset button text
+                    fillButton.textContent = 'Fill for Next Year (No Tariff Change)';
                     fillButton.disabled = false;
 
                 })
                 .catch(error => {
                     console.error('Error fetching latest data:', error);
                     alert(`Error fetching data: ${error.message}`);
-                    fillButton.textContent = 'Fill for Next Year (Constant Tariffs)'; // Reset button text
+                    fillButton.textContent = 'Fill for Next Year (No Tariff Change)';
                     fillButton.disabled = false;
                 });
         });
 
-        // Add event listeners to update plot when selections change
         economySelect.addEventListener('change', fetchAndPlot);
         sectorSelect.addEventListener('change', fetchAndPlot);
 
