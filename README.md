@@ -4,7 +4,7 @@
 
 ### Project Description
 
-This project is a web application built to predict how much import values might change year-over-year for different countries and product types, specifically looking at the impact of tariffs. We fed historical trade data and average duty rates into a Random Forest model; this type of model is good at finding complex patterns. To make the predictions relevant, the model doesn't just look at current tariff levels, but focuses on changes – how much did the duty rate change this year? What was the change in import value last year (since past trends matter)? It also considers the duty rate level and change from the previous year. Of course, the specific country and product sector are key inputs too. Before training, we had to clean the data; this involved filling in missing tariff data using interpolation (guessing based on nearby years within the same group) and removing a few extreme outlier data points representing massive, unusual swings in import value to keep the model focused on more typical patterns. The final web app, built with Flask, lets users pick a country and sector, see the historical trends, plug in values for the key factors (or use a button to auto-fill for a "what if tariffs stay the same?" scenario), and get a prediction for the change in import value, shown in millions of USD.
+This project is a web application built to predict how much import values might change year-over-year for different countries and product types, specifically looking at the impact of tariffs. We fed historical trade data and average duty rates into a Random Forest model; this type of model is good at finding complex patterns. To make the predictions relevant, the model doesn't just look at current tariff levels, but focuses on changes: how much did the duty rate change this year? What was the change in import value last year (since past trends matter)? It also considers the duty rate level and change from the previous year. Of course, the specific country and product sector are key inputs too. Before training, we had to clean the data; this involved filling in missing tariff data using interpolation (guessing based on nearby years within the same group) and removing a few extreme outlier data points representing massive, unusual swings in import value to keep the model focused on more typical patterns. The final web app, built with Flask, lets users pick a country and sector, see the historical trends, plug in values for the key factors (or use a button to auto-fill for a "what if tariffs stay the same?" scenario), and get a prediction for the change in import value, shown in millions of USD.
 
 ---
 
@@ -63,7 +63,7 @@ Data Processing & Utilities:
   - Mapping the different product/sector categories between the two datasets.
   - Aggregating duty rates.
   - Merging the two datasets based on Year, Reporting Economy, and Product/Sector.
-  = Saving the final merged_imports_duties.csv.
+  - Saving the final merged_imports_duties.csv.
 
 - data_utils.py: Contains helper functions used by other scripts:
   - `filter_economies()`
@@ -90,7 +90,7 @@ Key Directories:
 
 ### Functionalities and Test Results
 
-The web application contains the following functionalities the user may interact with:
+The web application contains the following functionalities with which the user may interact:
 
 - Selection of reporting economy
 - Selection of product sector
@@ -108,7 +108,7 @@ The web application contains the following functionalities the user may interact
 
 ### Data Collection
 
-Data was collected from `https://stats.wto.org/` after creating a WTO account. All reporting economies and the years 1988–2024 were selected. The following two indicators were attained:
+Data was collected from `https://stats.wto.org/` after creating a WTO account. All reporting economies and the years 1988–2024 were selected. Datasets for the following two economic indicators were downloaded:
 
 - Merchandise imports by product group – annual (Million US dollar)
   - *This is used as a target variable*
@@ -145,7 +145,7 @@ The final dataframe used for model training is structured as below.
 
 ### Data Processing
 
-A number of preprocessing steps were taken to prepare the data for training. Firstly, it was necessary to combine the two datasets into one, with all the relevant features. There was an immediate challenge with this: the proucts sectors are not standardized across the two. The tariff data uses the WTO's own standardized 22-product categorization scheme, while the import data uses a different, SITC3 product classification, which had 18 unique values in this case. To address this, a mapping module was created (`mapper.py`) that attempts to merge the two product/sector schemes with as little loss in information and intelligibility as possible.
+A number of preprocessing steps were taken to prepare the data for training. Firstly, it was necessary to combine the two datasets into one, with all the relevant features. There was an immediate challenge with this: the specific product sectors used by each table are not standardized across the two. The tariff data uses the WTO's own standardized 22-product categorization scheme, while the import data uses a different, SITC3 product classification, which had 18 unique values in this case. To address this, a mapping module was created (`mapper.py`) that attempts to merge the two product/sector schemes with as little loss in information and intelligibility as possible.
 
 Although data was selected to be downloaded starting from 1988, tariff data were only available for 2005 and beyond, so import data for years before that were dropped.
 
