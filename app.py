@@ -135,6 +135,8 @@ def predict():
         prediction = pipeline.predict(predict_df)
         predicted_delta = prediction[0] # Get the single prediction value
 
+        print(f'Predictions: ({prediction}) ({predicted_delta})')
+
         # Format the result
         result_text = f"Predicted Change in Import Value: ${predicted_delta:,.2f} Million USD"
         error_text = None
