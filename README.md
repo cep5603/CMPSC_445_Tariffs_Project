@@ -1,4 +1,4 @@
-# CMPSC_445_Tariffs_Project
+# CMPSC 445 – Tariffs Project
 
 ---
 
@@ -103,6 +103,16 @@ The web application contains the following functionalities with which the user m
      - *The user may also select an option to autofill the latter three with the values of the currently selected economy-product sector combination.*
  - Historical View
    - A line chart, made with Plotly, displaying the year-to-year import value and average duty rate of the selected economy-product sector combination
+
+Naive Random Forest results:
+RMSE: 80797.07
+R²: 0.98
+
+Delta/lagged Random Forest results:
+Train: R²=0.9323, RMSE=24222.95
+Test:  R²=0.7535, RMSE=48768.48
+
+(As can be seen, the model still overfits.)
 
 ---
 
