@@ -30,6 +30,11 @@ to start the webserver.
 
 Then, ctrl+click on the provided localhost link (default: `http://127.0.0.1:5001`) to open the interface.
 
+Sample Output:
+
+![image](https://github.com/user-attachments/assets/86915554-297e-42ad-8cbd-4503d969d297)
+
+
 ---
 
 ### Code Structure
