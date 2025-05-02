@@ -173,6 +173,11 @@ Initially, linear regression was used, but this performed very poorly, so random
 
 The random forest model was tested with and without lagged features. Without lagged features (especially `Lag1_Delta_TargetValue`), the model struggles significantly more to predict even the non-extreme changes accurately. The lagged features were determined to be important for achieving both high R² and low RMSE on the outlier-removed data.
 
+Top 20 Feature Importances on final model:
+
+![Feature_Importances_Updated](https://github.com/user-attachments/assets/7491ef0c-d8ff-4c7e-85fe-59de03703d65)
+
+
 ---
 
 ### Discussion and Conclusion
